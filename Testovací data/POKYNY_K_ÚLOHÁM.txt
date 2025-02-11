@@ -1,0 +1,51 @@
+Použijte funkci import pro importování jednotlivých testovacích souborů.
+
+01_Caesar
+* zvolte mód dekodéru a zkoušejte různé posuny tak, aby text dával smysl
+
+02_August
+* zvolte mód dekodéru a dešifrujte text
+* text je pozpátku
+
+03_Atbash
+* dešifrujte text
+* vyzkoušejte si, že funkce pro šifrování a dešifrování jsou ekvivalentní
+
+04_Vigenere a 05_sha
+* zašifrujte daný text, použijte klíč MILUJIPROGRAMOVANI
+* ze zašifrovaného textu vypočítejte SHA-384 hash
+* pokud jste postupovali správně, výsledný hash je klíčem k 05SHATopSecret.zip
+
+06_md5
+* vypočítejte z daného textu hash a zkuste výsledek exportovat
+
+07_rsa
+* vyzkoušejte si generování klíčového páru s délkou 4096 bitů
+* zašifrujte pomocí tohoto KP libovolný text a pak jej zkuste dešifrovat
+* podle kterého klíče se šifruje a podle kterého dešifruje???
+
+08_morseovka
+* dekódujte naléhavý text
+
+09_ascii
+* zkuste si zakódovat libovolný text a výsledek zobrazit ve všech čtyřech číselných soustavách
+
+10_rng
+* vygenerujte desetinné číslo v rozsahu 10000 až 35000 (posuvníky jsou max. do 10000, pro větší čísla pište do textových polí)
+* potom vygenerujte řadu v tomto rozsahu o počtu 12
+* exportujte tuto řadu
+
+11_bruteforce
+* pokuste se z následujících znaků vytvořit možné kombinace hesel o délce 5 znaků:
+	ABXYPZŽRŠ
+* kolik je možných kombinací???
+* jak dlouho to trvalo???
+
+12_filehash
+* vypočítejte z daného souboru libovolný hash
+* zkuste použít i funkci "Všechny předchozí"
+
+13_hashcomparation
+* použijte funkci pro porovnání souborových hashů
+* jsou záměrně vybrány 2 obrázky, u kterých se SHODUJE jejich md5 hash (kolize)
+* => proto se nedoporučuje používat hashe s velikostí pod 160 bitů

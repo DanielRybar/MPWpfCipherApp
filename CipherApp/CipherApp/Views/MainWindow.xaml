@@ -1,0 +1,894 @@
+﻿<Window x:Class="CipherApp.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:busyIndicator="https://github.com/Peoky/BusyIndicator"
+        xmlns:adonisUi="clr-namespace:AdonisUI;assembly=AdonisUI"
+        xmlns:local="clr-namespace:CipherApp"
+        xmlns:vm="clr-namespace:CipherApp.ViewModels"
+        xmlns:conv="clr-namespace:CipherApp.Converters"
+        mc:Ignorable="d"
+        Title="Šifrovací aplikace" Height="530" Width="800" MinHeight="450" MinWidth="600">
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+    <Window.Resources>
+        <conv:BoolToModeConverter x:Key="BoolToModeConverter" />
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <conv:ShaHashToTypeConverter x:Key="ShaHashToTypeConverter" />
+        <conv:BoolToColorConverter x:Key="BoolToColorConverter" />
+    </Window.Resources>
+    <Window.Style>
+        <Style TargetType="Window" BasedOn="{StaticResource {x:Type Window}}"/>
+    </Window.Style>
+    <busyIndicator:BusyMask x:Name="BusyIndicator" IsBusy="{Binding IsBusy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IndicatorType="Escalade" BusyContent="Počkejte prosím ..." >
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="18.44" />
+                <RowDefinition Height="13.56"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Background="#016fb9" />
+            <Grid Grid.Row="0" Grid.ColumnSpan="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Content="Import" Command="{Binding ImportFileCommand}" Grid.Column="0" Style="{StaticResource menuBtn}" />
+                <Button Content="Export" Command="{Binding ExportFileCommand}" Grid.Column="1" Style="{StaticResource menuBtn}" />
+                <Button Content="Porovnat soubory" Grid.Column="2" Command="{Binding CompareFilesAccordingToHashCommand}" Style="{StaticResource menuBtn}" />
+                <Menu Grid.Column="3">
+                    <MenuItem Header="" x:Name="popMenu" >
+                        <MenuItem Header="_SHA">
+                            <MenuItem Header="SHA-1" Click="ShaGenerate_Click" CommandParameter="SHA1" />
+                            <MenuItem Header="SHA-256" Click="ShaGenerate_Click" CommandParameter="SHA256" />
+                            <MenuItem Header="SHA-384" Click="ShaGenerate_Click" CommandParameter="SHA384" />
+                            <MenuItem Header="SHA-512" Click="ShaGenerate_Click" CommandParameter="SHA512" />
+                        </MenuItem>
+                        <MenuItem Header="_MD5" Click="Md5Generate_Click" />
+                        <MenuItem Header="_CRC-32" Click="Crc32Generate_Click" />
+                        <MenuItem Header="_Všechny předchozí" Click="AllGenerate_Click" />
+                    </MenuItem>
+                </Menu>
+                <Button Content="Hash ze souboru" Grid.Column="3" x:Name="btnPopMenu" Style="{StaticResource menuBtn}" />
+            </Grid>
+            <Grid Grid.Row="1" Grid.ColumnSpan="2" Grid.RowSpan="2" >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <DockPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ToggleButton Style="{DynamicResource {x:Static adonisUi:Styles.ToggleSwitch }}" x:Name="monoSwitch" Checked="monoSwitch_Checked">
+                        <ToggleButton.ToolTip>
+                            <ToolTip>
+                                <Grid>
+                                    <Label FontWeight="Normal">Šifry, které používají pouze jednu šifrovací tabulku pro všechna písmena ve zprávě (fixní substituce pro celou zprávu).</Label>
+                                </Grid>
+                            </ToolTip>
+                        </ToggleButton.ToolTip>
+                        <ToolTipService.ShowOnDisabled>True</ToolTipService.ShowOnDisabled>
+                    </ToggleButton>
+                    <TextBlock Text="Monoalfabetické šifry" />
+                </DockPanel>
+                <DockPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ToggleButton Style="{DynamicResource {x:Static adonisUi:Styles.ToggleSwitch }}" x:Name="polySwitch" Checked="polySwitch_Checked">
+                        <ToggleButton.ToolTip>
+                            <ToolTip>
+                                <Grid>
+                                    <Label FontWeight="Normal">Šifry, které používají více než jednu šifrovací tabulku pro šifrování zprávy (několik různých substitucí v různých pozicích).</Label>
+                                </Grid>
+                            </ToolTip>
+                        </ToggleButton.ToolTip>
+                        <ToolTipService.ShowOnDisabled>True</ToolTipService.ShowOnDisabled>
+                    </ToggleButton>
+                    <TextBlock Text="Polyalfabetické šifry" />
+                </DockPanel>
+                <DockPanel Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ToggleButton Style="{DynamicResource {x:Static adonisUi:Styles.ToggleSwitch }}" x:Name="hashSwitch" Checked="hashSwitch_Checked">
+                        <ToggleButton.ToolTip>
+                            <ToolTip>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="auto"/>
+                                        <RowDefinition Height="auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Label Grid.Row="0" FontWeight="Normal">Hashovací funkce je algoritmus, který převede zprávu (vstup) na hash, který je obvykle kratší než zpráva a je unikátní.</Label>
+                                    <Label Grid.Row="1">Tato funkce je jednosměrná, což znamená, že není možné (algoritmickou cestou) z hashe získat zpět původní zprávu.</Label>
+                                </Grid>
+                            </ToolTip>
+                        </ToggleButton.ToolTip>
+                        <ToolTipService.ShowOnDisabled>True</ToolTipService.ShowOnDisabled>
+                    </ToggleButton>
+                    <TextBlock Text="Hashovací funkce" />
+                </DockPanel>
+                <DockPanel Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ToggleButton Style="{DynamicResource {x:Static adonisUi:Styles.ToggleSwitch }}" x:Name="otherSwitch" Checked="otherSwitch_Checked" />
+                    <TextBlock Text="Ostatní" />
+                </DockPanel>
+            </Grid>
+            <TabControl SelectedIndex="{Binding SelectedIndex}" Grid.Row="3" Grid.ColumnSpan="2">
+                <TabItem x:Name="caesarCard">
+                    <TabItem.Header>Caesar</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Label FontWeight="Normal">Tato šifra je založena na posunu písmen ve zprávě o určitý počet pozic v abecedě. (např. AHOJ → QXEZ, posun o 16 znaků)</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}">
+                                <Label.Content>
+                                    <MultiBinding Converter="{StaticResource BoolToModeConverter}">
+                                        <Binding Path="ModeCaesar" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                        <Binding Path="SelectedIndex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                    </MultiBinding>
+                                </Label.Content>
+                            </Label>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0">Text</Label>
+                            <DockPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right"  >
+                                <TextBlock Text="Text je pozpátku" Margin="0 0 5 0" />
+                                <CheckBox Margin="0 0 8 0" IsChecked="{Binding IsBackwardsCaesar}" />
+                            </DockPanel>
+                            <TextBox Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding InputTextCaesar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" />
+                            <Grid Grid.Row="2" Grid.Column="0" MinHeight="25" >
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Command="{Binding SetEncodeCommand}" Content="Zašifrovat" />
+                                <Button Grid.Column="1" Command="{Binding SetDecodeCommand}" Content="Odšifrovat" />
+                                <TextBlock Grid.Column="2" Text="Posun o" HorizontalAlignment="Right" Margin="0 0 10 0" VerticalAlignment="Center" />
+                            </Grid>
+                            <DockPanel Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" >
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Template="{DynamicResource SliderTemplate1}" 
+                                        Maximum="26" 
+                                        Value="{Binding ShiftCaesar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                        x:Name="slider" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding ElementName=slider, Path=Value}" Margin="0 0 8 0" HorizontalAlignment="Right" Grid.Column="1"/>
+                                </Grid>
+                            </DockPanel>
+                        </Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Výsledný text</Label>
+                            <TextBox Grid.Row="1" Text="{Binding OutputTextCaesar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="augustCard">
+                    <TabItem.Header>August</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Label FontWeight="Normal">Tato šifra je podobná Caesarově šifře, ale posun v abecedě je vždy jen o jedno místo dopředu. (např. A → B, B → C, ..., akorát že Z → AA)</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}">
+                                <Label.Content>
+                                    <MultiBinding Converter="{StaticResource BoolToModeConverter}">
+                                        <Binding Path="ModeAugust" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                        <Binding Path="SelectedIndex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                    </MultiBinding>
+                                </Label.Content>
+                            </Label>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Text</Label>
+                            <DockPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right"  >
+                                <TextBlock Text="Text je pozpátku" Margin="0 0 5 0" />
+                                <CheckBox Margin="0 0 8 0" IsChecked="{Binding IsBackwardsAugust}" />
+                            </DockPanel>
+                            <TextBox Grid.Row="1" Text="{Binding InputTextAugust, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" />
+                            <Grid Grid.Row="2" >
+                                <DockPanel HorizontalAlignment="Center" VerticalAlignment="Center" MinHeight="25" >
+                                    <Button Command="{Binding SetEncodeCommand}" Content="Zašifrovat" MinWidth="150" />
+                                    <Button Command="{Binding SetDecodeCommand}" Content="Odšifrovat" MinWidth="150" />
+                                </DockPanel>
+                            </Grid>
+                        </Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Výsledný text</Label>
+                            <TextBox Grid.Row="1" Text="{Binding OutputTextAugust, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="atbashCard">
+                    <TabItem.Header>Atbash</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Label FontWeight="Normal">Tato šifra převádí písmena zprávy na písmena opačná v abecedě. Šifrovací a dešifrovací funkce je tedy stejná. (např. A → Z, B → Y, ...)</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}">
+                                <Label.Content>
+                                    <MultiBinding Converter="{StaticResource BoolToModeConverter}">
+                                        <Binding Path="ModeAtbash" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                        <Binding Path="SelectedIndex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                    </MultiBinding>
+                                </Label.Content>
+                            </Label>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Text</Label>
+                            <DockPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right"  >
+                                <TextBlock Text="Text je pozpátku" Margin="0 0 5 0" />
+                                <CheckBox Margin="0 0 8 0" IsChecked="{Binding IsBackwardsAtbash}" />
+                            </DockPanel>
+                            <TextBox Grid.Row="1" Text="{Binding InputTextAtbash, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" />
+                            <Grid Grid.Row="2" >
+                                <DockPanel HorizontalAlignment="Center" VerticalAlignment="Center" MinHeight="25" >
+                                    <Button Command="{Binding SetEncodeCommand}" Content="Zašifrovat" MinWidth="150" />
+                                    <Button Command="{Binding SetDecodeCommand}" Content="Odšifrovat" MinWidth="150" />
+                                </DockPanel>
+                            </Grid>
+                        </Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Výsledný text</Label>
+                            <TextBox Grid.Row="1" Text="{Binding OutputTextAtbash, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="vigenereCard">
+                    <TabItem.Header>Vigenère</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="auto"/>
+                                                <RowDefinition Height="auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Label Grid.Row="0" FontWeight="Normal">Tato šifra je založena na posunu písmen ve zprávě v závislosti na klíči. Každé písmeno zprávy se tedy posouvá o tolik pozic, o kolik je posunuto příslušné písmeno v klíči.</Label>
+                                            <Label Grid.Row="1" FontWeight="Normal">- např. zpráva "ahoj", klíč "cau", výsledek je "chil"</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}">
+                                <Label.Content>
+                                    <MultiBinding Converter="{StaticResource BoolToModeConverter}">
+                                        <Binding Path="ModeVigenere" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                        <Binding Path="SelectedIndex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                    </MultiBinding>
+                                </Label.Content>
+                            </Label>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0">Text</Label>
+                            <DockPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right"  >
+                                <TextBlock Text="Text je pozpátku" Margin="0 0 5 0" />
+                                <CheckBox Margin="0 0 8 0" IsChecked="{Binding IsBackwardsVigenere}" />
+                            </DockPanel>
+                            <TextBox Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding InputTextVigenere, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" />
+                            <Grid Grid.Row="2" Grid.Column="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Command="{Binding SetEncodeCommand}" Content="Zašifrovat" />
+                                <Button Grid.Column="1" Command="{Binding SetDecodeCommand}" Content="Odšifrovat" />
+                                <TextBlock Grid.Column="2" Text="Klíč" HorizontalAlignment="Right" Margin="0 0 10 0" VerticalAlignment="Center" />
+                            </Grid>
+                            <DockPanel Grid.Row="2" Grid.Column="1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="auto" />
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                                <TextBox Text="{Binding KeyVigenere, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextWrapping="NoWrap" />
+                            </DockPanel>
+                        </Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Výsledný text</Label>
+                            <TextBox Grid.Row="1" Text="{Binding OutputTextVigenere, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="morseCard">
+                    <TabItem.Header>Morseovka</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Label FontWeight="Normal">Tato kódovací metoda převádí písmena, čísla a znaky do kombinací teček a čárek podle slovníku.</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}">
+                                <Label.Content>
+                                    <MultiBinding Converter="{StaticResource BoolToModeConverter}">
+                                        <Binding Path="ModeMorse" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                        <Binding Path="SelectedIndex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                    </MultiBinding>
+                                </Label.Content>
+                            </Label>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Text</Label>
+                            <DockPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right"  >
+                                <TextBlock Text="Oddělovat slova lomítkem" Margin="0 0 5 0" />
+                                <CheckBox Margin="0 0 8 0" IsChecked="{Binding IsSeparatedMorse}" />
+                            </DockPanel>
+                            <TextBox Grid.Row="1" Text="{Binding InputTextMorse, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" />
+                            <Grid Grid.Row="2" >
+                                <DockPanel HorizontalAlignment="Center" VerticalAlignment="Center" MinHeight="25" >
+                                    <Button Command="{Binding SetEncodeCommand}" Content="Zašifrovat" MinWidth="150" />
+                                    <Button Command="{Binding SetDecodeCommand}" Content="Odšifrovat" MinWidth="150" />
+                                </DockPanel>
+                            </Grid>
+                        </Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Výsledný text</Label>
+                            <TextBox Grid.Row="1" Text="{Binding OutputTextMorse, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="asciiCard">
+                    <TabItem.Header>ASCII</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Label FontWeight="Normal">Tato kódovací metoda převádí znaky na příslušná čísla podle ASCII tabulky. Můžete si vybrat v jaké soustavě chcete výsledek zobrazit.</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}">
+                                <Label.Content>
+                                    <MultiBinding Converter="{StaticResource BoolToModeConverter}">
+                                        <Binding Path="ModeAscii" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                        <Binding Path="SelectedIndex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                    </MultiBinding>
+                                </Label.Content>
+                            </Label>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="auto" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0">Text</Label>
+                            <DockPanel Grid.Row="0" Grid.Column="2"  >
+                                <ComboBox 
+                                    ItemsSource="{Binding AsciiChoices}" 
+                                    SelectedItem="{Binding SelectedInputMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                    Visibility="{Binding IsInputModeEnable, Converter={StaticResource BoolToVisibilityConverter}}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBox Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding InputTextAscii, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Grid.Row="2" Grid.ColumnSpan="3" >
+                                <DockPanel HorizontalAlignment="Center" VerticalAlignment="Center" MinHeight="25" >
+                                    <Button Command="{Binding SetEncodeCommand}" Content="Zašifrovat" MinWidth="150" />
+                                    <Button Command="{Binding SetDecodeCommand}" Content="Odšifrovat" MinWidth="150" />
+                                </DockPanel>
+                            </Grid>
+                        </Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="auto" />
+                            </Grid.ColumnDefinitions>
+                            <DockPanel Grid.Row="0" Grid.Column="2"  >
+                                <ComboBox 
+                                    ItemsSource="{Binding AsciiChoices}" 
+                                    SelectedItem="{Binding SelectedOutputMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                    Visibility="{Binding IsOutputModeEnable, Converter={StaticResource BoolToVisibilityConverter}}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center" />
+                            </DockPanel>
+                            <Label Grid.Row="0">Výsledný text</Label>
+                            <TextBox Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding OutputTextAscii, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="shaCard">
+                    <TabItem.Header>SHA</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Label FontWeight="Normal">SHA (Secure Hash Algorithm) je skupina hashovacích funkcí. Zde jsou implementovány verze SHA-1 a SHA-2 → můžete si zvolit výslednou délku hashe (256, 384 nebo 512 bitů).</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}" Content="{Binding SelectedShaType, Converter={StaticResource ShaHashToTypeConverter}}" />
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="auto" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0">Text</Label>
+                            <TextBox Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding InputTextSha, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Grid.Row="2" Grid.ColumnSpan="3" >
+                                <DockPanel HorizontalAlignment="Right" VerticalAlignment="Center" MinHeight="25" />
+                            </Grid>
+                        </Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="auto" />
+                            </Grid.ColumnDefinitions>
+                            <DockPanel Grid.Row="0" Grid.Column="2" MinWidth="100">
+                                <TextBlock Text="Typ  " HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <ComboBox 
+                                    ItemsSource="{Binding ShaList}" 
+                                    SelectedItem="{Binding SelectedShaType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center" />
+                            </DockPanel>
+                            <Label Grid.Row="0">Hash</Label>
+                            <TextBox Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding OutputTextSha, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="md5Card">
+                    <TabItem.Header>MD5</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Label FontWeight="Normal">MD5 (message-digest algorithm) je hashovací algoritmus pro vytvoření 128 bitového hashe.</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}" Content="MD5 hash" />
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="auto" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0">Text</Label>
+                            <TextBox Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding InputTextMd5, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Grid.Row="2" Grid.ColumnSpan="3" >
+                                <DockPanel HorizontalAlignment="Right" VerticalAlignment="Center" MinHeight="25" />
+                            </Grid>
+                        </Grid>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="auto" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0">Hash</Label>
+                            <TextBox Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding OutputTextMd5, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="rsaCard">
+                    <TabItem.Header>RSA</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center" Grid.ColumnSpan="3">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="auto"/>
+                                                <RowDefinition Height="auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Label Grid.Row="0" FontWeight="Normal">RSA (Rivest-Shamir-Adleman) je algoritmus pro šifrování zpráv a jejich podepisování. Jedná se o asymetrické šifrování, jelikož se používá dvojice klíčů - soukromý a veřejný.</Label>
+                                            <Label Grid.Row="1" FontWeight="Normal">Soukromý klíč je používán pro dešifrování zpráv a podepisování zpráv. Veřejný klíč je používán pro šifrování zpráv a ověřování podpisů.</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}">
+                                <Label.Content>
+                                    <MultiBinding Converter="{StaticResource BoolToModeConverter}">
+                                        <Binding Path="ModeRsa" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                        <Binding Path="SelectedIndex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" />
+                                    </MultiBinding>
+                                </Label.Content>
+                            </Label>
+                        </DockPanel>
+                        <Grid Grid.Row="1" Grid.Column="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Veřejný klíč</Label>
+                            <TextBox IsReadOnly="True"
+                                Grid.Row="1" 
+                                Text="{Binding PublicKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                Background="{Binding IsPublicKeyEnable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource BoolToColorConverter}}" />
+                        </Grid>
+                        <Grid Grid.Row="1" Grid.Column="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Button Content="Export klíčů do souboru" Grid.Row="2" Margin="10" MaxHeight="90" Command="{Binding ExportRsaKeysToFileCommand}" />
+                            <DockPanel Grid.Row="1" Margin="10">
+                                <TextBlock Text="Počet bitů (520-4096)" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBox 
+                                    TextWrapping="NoWrap" 
+                                    Margin="5 0 0 0" 
+                                    Text="{Binding BitSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                    HorizontalContentAlignment="Center" 
+                                    VerticalContentAlignment="Center" 
+                                    PreviewTextInput="NumberValidationTextBox"
+                                    FontFamily="Arial" />
+                            </DockPanel>
+                            <Button Content="Generovat pár klíčů RSA" Grid.Row="0" Margin="10" MaxHeight="90" Command="{Binding GenerateKeyPairCommand}" />
+                        </Grid>
+                        <Grid Grid.Row="1" Grid.Column="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0">Soukromý klíč</Label>
+                            <TextBox IsReadOnly="True"
+                                Grid.Row="1" 
+                                Text="{Binding PrivateKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                Background="{Binding IsPrivateKeyEnable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource BoolToColorConverter}}" />
+                        </Grid>
+                        <Grid Grid.Row="2" Grid.ColumnSpan="3">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0">Vstup</Label>
+                            <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding InputTextRsa, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Label Grid.Row="0" Grid.Column="2">Výstup</Label>
+                            <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding OutputTextRsa, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" />
+                            <Grid Grid.Column="1" Grid.Row="1" MinWidth="100">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Button Content="Zašifrovat" Grid.Row="0" Margin="10" MaxHeight="90" Command="{Binding SetEncodeCommand}" />
+                                <Button Content="Dešifrovat" Grid.Row="1" Margin="10" MaxHeight="90" Command="{Binding SetDecodeCommand}" />
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="rngCard">
+                    <TabItem.Header>Generátor čísel</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Label FontWeight="Normal">Nástroj pro generování pseudonáhodných čísel. Můžete vygenerovat i desetinné číslo nebo generovat řadu čísel.</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}" Content="Generátor pseudonáhodných čísel"/>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding GeneratedNumber}" Grid.Row="0" Grid.Column="1" Style="{StaticResource random}" />
+                            <Grid Grid.Row="0" Grid.Column="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="MIN" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15"/>
+                                <Slider Template="{DynamicResource SliderTemplate1}" Maximum="10000" VerticalAlignment="Center" Grid.Row="1" Margin="5" x:Name="sliMin" Value="{Binding Min, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBox Text="{Binding Min, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource minmax}" Grid.Row="2" PreviewTextInput="NumberValidationTextBox" />
+                            </Grid>
+                            <Grid Grid.Row="0" Grid.Column="2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="MAX" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15"/>
+                                <Slider Template="{DynamicResource SliderTemplate1}" Maximum="10000" VerticalAlignment="Center" Grid.Row="1" Margin="5" Value="{Binding Max, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBox Text="{Binding Max, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource minmax}" Grid.Row="2" PreviewTextInput="NumberValidationTextBox" />
+                            </Grid>
+                            <Grid Grid.Row="1" Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <DockPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="Generovat desetinné číslo"/>
+                                    <CheckBox Margin="5,0,0,0" IsChecked="{Binding IsDecimal, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </DockPanel>
+                                <Button Content="Generovat" Grid.Row="1" Command="{Binding GenerateRandomNumber}" Margin="2" />
+                            </Grid>
+                            <Grid Grid.Row="2" Grid.Column="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Generovat řadu" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15" FontWeight="Bold"/>
+                                <DockPanel Grid.Row="1">
+                                    <TextBlock Text="Počet: " HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5" />
+                                    <TextBox Style="{StaticResource minmax}" PreviewTextInput="NumberValidationTextBox" Text="{Binding Count, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </DockPanel>
+                                <Button Grid.Row="2" Content="Generovat řadu" Margin="2" Command="{Binding GenerateRandomRow}" />
+                            </Grid>
+                            <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Generovaná řada" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15" FontWeight="Bold"/>
+                                <TextBox Grid.Row="1" Grid.RowSpan="2" Text="{Binding GeneratedRow}" IsReadOnly="True" Style="{StaticResource minmax}" />
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem x:Name="bruteforceCard">
+                    <TabItem.Header>Ukázka bruteforce</TabItem.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" HorizontalAlignment="Center">
+                            <Button Width="20" Background="LightBlue" Style="{StaticResource infoBtn}">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="auto"/>
+                                                <RowDefinition Height="auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Label FontWeight="Normal">Jednoduchá demonstrace bruteforce útoku. Zadejte znaky a délku a program vám vypíše všechny možné kombinace, které lze ze znaků sestavit.</Label>
+                                            <Label Grid.Row="1" FontWeight="Normal">Délka je omezena kvůli časové náročnosti programu.</Label>
+                                        </Grid>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Label Grid.Row="0" Style="{StaticResource header}" Content="Bruteforce"/>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <DockPanel Grid.Row="0" Grid.ColumnSpan="3" >
+                                <TextBlock Text="Zadejte znaky:" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                <TextBox Text="{Binding BruteScrambled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="5" />
+                            </DockPanel>
+                            <DockPanel Grid.Row="1" Grid.ColumnSpan="3">
+                                <TextBlock Text="Zadejte délku (1-6): " HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBox Text="{Binding BruteLength, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="5" PreviewTextInput="NumberValidationTextBox" />
+                            </DockPanel>
+                            <Button Grid.Row="2" Grid.Column="1" Margin="10" Command="{Binding BruteForceCommand}">Začít bruteforce</Button>
+                            <ScrollViewer Grid.Row="3" Grid.ColumnSpan="2">
+                                <TextBox IsReadOnly="True" Text="{Binding BruteResult, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </ScrollViewer>
+                            <Grid Grid.Row="3" Grid.Column="2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Margin="5">
+                                    <TextBlock Text="Počet možných kombinací: " />
+                                    <TextBox IsReadOnly="True" Text="{Binding BruteCombCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Margin="5">
+                                    <TextBlock Text="Celkový čas: " />
+                                    <TextBox IsReadOnly="True" Text="{Binding BruteTimer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0} ms'}" />
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </busyIndicator:BusyMask>
+</Window>

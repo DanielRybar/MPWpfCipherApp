@@ -1,0 +1,34 @@
+﻿<Window x:Class="CipherApp.Views.FirstWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CipherApp.Views"
+        mc:Ignorable="d"
+        Title="Šifrovací aplikace" MinHeight="400" MaxHeight="400" MinWidth="500" MaxWidth="500" >
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Label 
+            Content="Aplikace pro šifrování ve WPF" 
+            Grid.ColumnSpan="3" 
+            HorizontalAlignment="Center" 
+            VerticalAlignment="Center"
+            FontSize="27"
+            />
+        <Image Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Source="pack://siteoforigin:,,,/hacker_image.png" />
+        <StackPanel Grid.Row="2" Grid.Column="2" VerticalAlignment="Bottom" HorizontalAlignment="Right">
+            <TextBlock Text="© Daniel Rybář" Margin="10,10,10,0" />
+            <TextBlock Text="2023" Margin="10,0,10,10" HorizontalAlignment="Right" />
+        </StackPanel>
+        <Button Style="{StaticResource menuBtn}" Grid.Row="2" Grid.Column="1" Margin="20,40,20,30" Content="Vstoupit" Click="ButtonEnter_Click"/>
+    </Grid>
+</Window>
